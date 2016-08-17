@@ -1,8 +1,10 @@
 package pproxies
 
 import (
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -10,6 +12,12 @@ import (
 )
 
 const SrcTimeout = 20 * time.Second
+
+var logger *log.Logger
+
+func init() {
+	logger = log.New(os.Stderr, "info:", log.LstdFlags)
+}
 
 type Pool struct {
 	srcs   []proxy.ProxySrc
@@ -38,7 +46,7 @@ func NewPool(srcs []proxy.ProxySrc) *Pool {
 	}
 }
 
-func test(proxys []proxy.Proxy, chunkSize int, timeout time.Duration, testURL string, stop chan struct{}, out chan<- proxy.Proxy) {
+func test(proxies []proxy.Proxy, chunkSize int, timeout time.Duration, testURL string, stop chan struct{}, out chan<- proxy.Proxy) {
 	URL, err := url.Parse(testURL)
 	if err != nil {
 		panic(err)
@@ -47,7 +55,7 @@ func test(proxys []proxy.Proxy, chunkSize int, timeout time.Duration, testURL st
 	if URL.Scheme == "https" {
 		https = true
 	}
-	chunkNum := len(proxys) / chunkSize
+	chunkNum := len(proxies) / chunkSize
 	waiter := &sync.WaitGroup{}
 	tester := func(ps []proxy.Proxy) {
 		defer waiter.Done()
@@ -73,10 +81,10 @@ func test(proxys []proxy.Proxy, chunkSize int, timeout time.Duration, testURL st
 	var i int
 	for i = 0; i < chunkNum-1; i++ {
 		waiter.Add(1)
-		go tester(proxys[i*chunkSize : (i+1)*chunkSize])
+		go tester(proxies[i*chunkSize : (i+1)*chunkSize])
 	}
 	waiter.Add(1)
-	go tester(proxys[i*chunkSize:])
+	go tester(proxies[i*chunkSize:])
 	waiter.Wait()
 }
 
@@ -86,16 +94,18 @@ func (pool *Pool) fetch(opt Option, stop chan struct{}) <-chan proxy.Proxy {
 	for i, src := range pool.srcs {
 		waiter.Add(1)
 		go func(i int) {
-			proxys, err := src(SrcTimeout)
+			proxies, err := src(SrcTimeout)
 			if err != nil {
 				return
 			}
-			test(proxys, opt.ChunkSize, opt.Timeout, opt.TestURL, stop, out)
+			logger.Printf("fetched %d proxies from src %d\n", len(proxies), i)
+			test(proxies, opt.ChunkSize, opt.Timeout, opt.TestURL, stop, out)
 			waiter.Done()
 		}(i)
 	}
 	go func() {
 		waiter.Wait()
+		logger.Println("finish testing")
 		close(out)
 	}()
 	return out
@@ -108,12 +118,15 @@ func (pool *Pool) loop(opt Option, stop chan struct{}) {
 	var cache proxy.Proxy
 	var fetching bool
 	var consumed = true
+	var count int
 	for {
 		if !fetching && len(buf) == 0 && consumed {
+			logger.Println("start fetching proxies")
 			recv = pool.fetch(opt, stop)
 			fetching = true
 		}
 		if consumed && len(buf) != 0 {
+			consumed = false
 			cache = buf[0]
 			buf = buf[1:]
 			send = pool.RecvCh
@@ -121,9 +134,12 @@ func (pool *Pool) loop(opt Option, stop chan struct{}) {
 		select {
 		case p, ok := <-recv:
 			if ok {
+				count++
 				buf = append(buf, p)
 				continue
 			}
+			logger.Printf("a total of %d available proxies\n", count)
+			count = 0
 			recv = nil
 			fetching = false
 		case send <- cache:

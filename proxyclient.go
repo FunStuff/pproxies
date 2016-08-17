@@ -36,12 +36,14 @@ func NewClientList(recv <-chan proxy.Proxy, num int, timeout time.Duration, maxE
 func (l *ClientList) add(p *proxyClient) {
 	l.Lock()
 	defer l.Unlock()
+	logger.Printf("enable proxy %v\n", p.proxy)
 	l.clients[p] = struct{}{}
 }
 
 func (l *ClientList) delete(p *proxyClient) {
 	l.Lock()
 	defer l.Unlock()
+	logger.Printf("enable proxy %v\n", p.proxy)
 	delete(l.clients, p)
 }
 
