@@ -25,15 +25,16 @@ type Option struct {
 
 var defaultOpt = &Option{
 	6,
-	5,
-	"http://httpbin.org/get",
+	5 * time.Second,
+	"http://httpbin.org/ip",
 }
 
 func NewPool(srcs []proxy.ProxySrc) *Pool {
+	ch := make(chan struct{})
+	close(ch)
 	return &Pool{
 		srcs:   srcs,
-		stopCh: make(struct{}),
-		RecvCh: make(chan proxy.Proxy),
+		stopCh: ch,
 	}
 }
 
@@ -80,7 +81,7 @@ func test(proxys []proxy.Proxy, chunkSize int, timeout time.Duration, testURL st
 }
 
 func (pool *Pool) fetch(opt Option, stop chan struct{}) <-chan proxy.Proxy {
-	out := make(chan proxy.Proxy, pool.chunkSize)
+	out := make(chan proxy.Proxy, opt.ChunkSize)
 	waiter := &sync.WaitGroup{}
 	for i, src := range pool.srcs {
 		waiter.Add(1)
@@ -106,7 +107,7 @@ func (pool *Pool) loop(opt Option, stop chan struct{}) {
 	var buf []proxy.Proxy
 	var cache proxy.Proxy
 	var fetching bool
-	var consumed bool
+	var consumed = true
 	for {
 		if !fetching && len(buf) == 0 && consumed {
 			recv = pool.fetch(opt, stop)
@@ -129,6 +130,7 @@ func (pool *Pool) loop(opt Option, stop chan struct{}) {
 			send = nil
 			consumed = true
 		case <-stop:
+			close(pool.RecvCh)
 			return
 		}
 	}
@@ -143,7 +145,9 @@ func (pool *Pool) Start(opt *Option) {
 	if opt == nil {
 		opt = defaultOpt
 	}
-	go pool.loop(opt, pool.stopCh)
+	pool.stopCh = make(chan struct{})
+	pool.RecvCh = make(chan proxy.Proxy)
+	go pool.loop(*opt, pool.stopCh)
 }
 
 func (pool *Pool) Stop() {
