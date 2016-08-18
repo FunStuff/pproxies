@@ -43,7 +43,7 @@ func (l *ClientList) add(p *proxyClient) {
 func (l *ClientList) delete(p *proxyClient) {
 	l.Lock()
 	defer l.Unlock()
-	logger.Printf("enable proxy %v\n", p.proxy)
+	logger.Printf("disable proxy %v\n", p.proxy)
 	delete(l.clients, p)
 }
 

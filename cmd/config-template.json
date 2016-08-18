@@ -1,0 +1,10 @@
+{
+    "port":9527,
+    "chunkSize":6,
+    "time":5,
+    "url":"http://httpbin.org/ip",
+    "error":30,
+    "proxyNum":5,
+    "default":true,
+    "api":""
+}
