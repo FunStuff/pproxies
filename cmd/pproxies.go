@@ -17,11 +17,11 @@ var opts struct {
 	Port         int    `short:"p" json:"port" long:"port" description:"listened port" default:"9527"`
 	ChunkSize    int    `short:"s" json:"chunkSize" long:"chunksize" description:"chunksize" default:"10"`
 	TestURL      string `short:"u" json:"url" long:"url" description:"test url" default:"http://httpbin.org/ip"`
-	Timeout      int    `short:"t" json:"time" long:"time" description:"test timeout(second)" default:"5"`
+	TestTimeout  int    `short:"T" json:"testTimeout" long:"ttimeout" description:"test timeout(second)" default:"5"`
+	ProxyTimeout int    `short:"t" json:"proxyTimeout" long:"ptimeout" description:"proxy timeout(second)" default:"5"`
 	MaxError     int    `short:"e" json:"error" long:"error" description:"max error" default:"30"`
 	ProxyNum     int    `short:"n" json:"proxyNum" long:"num" description:"proxy number" default:"5"`
-	API          string `long:"api" json:"api" description:"proxy api"`
-	DefaultProxy bool   `long:"default" json:"default" description:"enable default proxy api"`
+	API          string `long:"api" json:"api" description:"proxy api" default:"default"`
 	ConfigFile   string `short:"c" json:"-" long:"config" description:"config file"`
 }
 
@@ -42,22 +42,20 @@ func HandleFlag() {
 func main() {
 	HandleFlag()
 	var srcs []proxy.ProxySrc
-	if opts.DefaultProxy {
+	if opts.API == "default" {
 		srcs = append(srcs, proxy.CyberSrc)
-	}
-	if opts.API != "" {
+	} else if opts.API != "" {
 		srcs = append(srcs, proxy.APISrc(opts.API))
-	}
-	if len(srcs) == 0 {
-		log.Fatal("no proxy source")
+	} else {
+		log.Fatal("no API")
 	}
 	pool := pproxies.NewPool(srcs)
 	pool.Start(&pproxies.Option{
 		opts.ChunkSize,
-		time.Duration(opts.Timeout) * time.Second,
+		time.Duration(opts.TestTimeout) * time.Second,
 		opts.TestURL,
 	})
 	recv := pool.RecvCh
-	lists := pproxies.NewClientList(recv, opts.ProxyNum, time.Duration(opts.Timeout)*time.Second, opts.MaxError)
+	lists := pproxies.NewClientList(recv, opts.ProxyNum, time.Duration(opts.ProxyTimeout)*time.Second, opts.MaxError)
 	http.ListenAndServe(":"+strconv.Itoa(opts.Port), lists)
 }
