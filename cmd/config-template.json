@@ -1,10 +1,12 @@
 {
     "port":9527,
     "chunkSize":6,
-    "testTimeout":5,
-    "proxyTimeout":5,
+    "testTimeout":10,
+    "proxyTimeout":10,
     "url":"http://httpbin.org/ip",
-    "error":30,
+    "error":10,
     "proxyNum":5,
-    "api":""
+    "interval":0,
+    "banStr":"",
+    "api":"default"
 }

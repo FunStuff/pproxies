@@ -124,6 +124,7 @@ func (pool *Pool) loop(opt Option, stop chan struct{}) {
 			logger.Println("start fetching proxies")
 			recv = pool.fetch(opt, stop)
 			fetching = true
+			buf = nil
 		}
 		if consumed && len(buf) != 0 {
 			consumed = false
