@@ -22,6 +22,8 @@ var opts struct {
 	MaxError     int    `short:"e" json:"error" long:"error" description:"max error" default:"30"`
 	ProxyNum     int    `short:"n" json:"proxyNum" long:"num" description:"proxy number" default:"5"`
 	API          string `long:"api" json:"api" description:"proxy api" default:"default"`
+	Interval     int    `long:"interval" description:"auto check interval(second) if 0,disable auto check"`
+	BanStr       string `long:"banstr" description:"if auto check find this string in response,it will switch proxy"`
 	ConfigFile   string `short:"c" json:"-" long:"config" description:"config file"`
 }
 
@@ -56,6 +58,7 @@ func main() {
 		opts.TestURL,
 	})
 	recv := pool.RecvCh
-	lists := pproxies.NewClientList(recv, opts.ProxyNum, time.Duration(opts.ProxyTimeout)*time.Second, opts.MaxError)
+	lists := pproxies.NewClientList(recv, opts.ProxyNum, time.Duration(opts.ProxyTimeout)*time.Second,
+		opts.MaxError, opts.TestURL, opts.BanStr, time.Duration(opts.Interval)*time.Second)
 	http.ListenAndServe(":"+strconv.Itoa(opts.Port), lists)
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func writeError(bufrw *bufio.ReadWriter) {
-	bufrw.WriteString("HTTP/1.1 502 Bad Gateway")
+	bufrw.WriteString("HTTP/1.1 502 Bad Gateway\r\n\r\n")
 	bufrw.Flush()
 }
 
@@ -39,12 +39,12 @@ func (h *ClientList) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 			writeError(bufrw)
 			return
 		}
+		defer sConn.Close()
 		_, err := io.WriteString(sConn, fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", r.Host, r.Host))
 		if err != nil {
 			writeError(bufrw)
 			return
 		}
-		defer sConn.Close()
 	}
 	waiter := &sync.WaitGroup{}
 	waiter.Add(1)

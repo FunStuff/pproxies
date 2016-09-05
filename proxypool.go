@@ -94,13 +94,13 @@ func (pool *Pool) fetch(opt Option, stop chan struct{}) <-chan proxy.Proxy {
 	for i, src := range pool.srcs {
 		waiter.Add(1)
 		go func(i int) {
+			defer waiter.Done()
 			proxies, err := src(SrcTimeout)
 			if err != nil {
 				return
 			}
 			logger.Printf("fetched %d proxies from src %d\n", len(proxies), i)
 			test(proxies, opt.ChunkSize, opt.Timeout, opt.TestURL, stop, out)
-			waiter.Done()
 		}(i)
 	}
 	go func() {

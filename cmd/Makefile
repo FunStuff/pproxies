@@ -3,3 +3,4 @@ pproxies-alpine:pproxies.go
 
 image:pproxies-alpine Dockerfile
 	docker build -t xlaurent/pproxies .
+	$(RM) pproxies-alpine
